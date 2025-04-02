@@ -43,7 +43,7 @@ def to_litellm_config_yaml(
             "master_key": f"sk-{uuid.uuid4().hex}",
             "alerting": ["slack", "email"],
             "proxy_batch_write_at": 60,  # Batch write spend updates every 60s
-            "database_connection_pool_limit": 10,  # limit the number of database connections to = MAX Number of DB Connections/Number of instances of litellm proxy (Around 10-20 is good number)
+            "database_connection_pool_limit": 10,  # limit the number of database connections to = MAX Number of DB Connections/Number of instances of litellm proxy (Around 10-20 is good number)  # noqa: E501
             "alerting_threshold": 0,
             "allow_requests_on_db_unavailable": True,
             "allowed_routes": [],
@@ -126,7 +126,7 @@ def to_litellm_config_yaml(
                     "api_base": p.base_url,
                     **{"api_key": f"os.environ/{p.api_env_key_name}"},
                     **({} if p.api_version is None else {"api_version": p.api_version}),
-                    **{k: v for k, v in model_spec.items()},
+                    **dict(model_spec.items()),
                 },
             }
             config["model_list"].append(model_entry)  # pyright: ignore[reportArgumentType]
@@ -136,12 +136,24 @@ def to_litellm_config_yaml(
             total_fallbacks_found = 0
             total_fallbacks_required = 25
             for k, v in FREE_MODELS:
-                k_name = k if k.startswith(f"{v.get('litellm_provider')}/") and k not in suitable_fallbacks else f"{v.get('litellm_provider')}/{k}"
+                k_name = (
+                    k
+                    if k.startswith(f"{v.get('litellm_provider')}/") and k not in suitable_fallbacks
+                    else f"{v.get('litellm_provider')}/{k}"
+                )
                 if k.casefold() == model_name.casefold():  # Avoid self-referential fallbacks
                     continue
-                if v.get("mode") is not None and model_spec.get("mode") is not None and v.get("mode") != model_spec.get("mode"):
+                if (
+                    v.get("mode") is not None
+                    and model_spec.get("mode") is not None
+                    and v.get("mode") != model_spec.get("mode")
+                ):
                     continue
-                if v.get("supports_vision") is not None and model_spec.get("supports_vision") is not None and v.get("supports_vision") != model_spec.get("supports_vision"):
+                if (
+                    v.get("supports_vision") is not None
+                    and model_spec.get("supports_vision") is not None
+                    and v.get("supports_vision") != model_spec.get("supports_vision")
+                ):
                     continue
                 if (
                     v.get("supports_embedding_image_input") is not None
@@ -198,7 +210,7 @@ if __name__ == "__main__":
     print("Saving all_models.json")
     Path("all_models.json").absolute().write_text(
         json.dumps(
-            {model: spec for model, spec in ALL_MODELS},
+            dict(ALL_MODELS),
             indent=4,
             ensure_ascii=True,
         ),
@@ -206,7 +218,7 @@ if __name__ == "__main__":
     print("Saving free_chat_models.json")
     Path("free_chat_models.json").absolute().write_text(
         json.dumps(
-            {model: spec for model, spec in FREE_MODELS},
+            dict(FREE_MODELS),
             indent=4,
             ensure_ascii=True,
         ),

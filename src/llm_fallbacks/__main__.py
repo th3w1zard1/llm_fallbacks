@@ -9,8 +9,9 @@ import pandas as pd
 
 from llm_fallbacks.core import get_litellm_model_specs
 
+
 if TYPE_CHECKING:
-    from typing_extensions import Literal
+    from typing_extensions import Literal  # pyright: ignore[reportMissingModuleSource]
 
     FilterMethod = Literal[
         "value",
@@ -62,12 +63,12 @@ else:
     Literal = str
 
 
-def filter_model_specs(
+def filter_model_specs(  # noqa: C901
     method: FilterMethod,
     columns: list[str] | str | None = None,
     *,
     # Value filtering
-    comparison: Literal[">", "<", ">=", "<=", "==", "!="] | None = None,
+    comparison: Literal[">", "<", ">=", "<=", "==", "!="] | None = None,  # noqa: F722
     value: Any = None,
     # Regex
     pattern: str | None = None,
@@ -145,7 +146,7 @@ def filter_model_specs(
         columns = [columns]
 
     if method == "value" and comparison and value is not None:
-        ops = {
+        ops: dict[str, Callable[[pd.Series, Any], pd.Series]] = {
             ">": np.greater,
             "<": np.less,
             ">=": np.greater_equal,
@@ -170,12 +171,7 @@ def filter_model_specs(
             q1 = df[columns[0]].quantile(0.25)
             q3 = df[columns[0]].quantile(0.75)
             iqr = q3 - q1
-            df = df[
-                ~(
-                    (df[columns[0]] < (q1 - iqr_threshold * iqr))
-                    | (df[columns[0]] > (q3 + iqr_threshold * iqr))
-                )
-            ]
+            df = df[~((df[columns[0]] < (q1 - iqr_threshold * iqr)) | (df[columns[0]] > (q3 + iqr_threshold * iqr)))]
 
     elif method == "boolean" and condition and len(columns) > 0:
         df = df[condition(df[columns[0]])]
@@ -210,8 +206,8 @@ def filter_model_specs(
         df = df[df[columns[0]].isin(categories)]
 
     elif method == "correlation" and target_column and correlation_threshold:
-        correlations = df.corr()[target_column].abs()
-        highly_correlated = correlations[correlations > correlation_threshold].index
+        correlations: pd.Series = df.corr()[target_column].abs()
+        highly_correlated: pd.Index = correlations[correlations > correlation_threshold].index
         df = df[highly_correlated]
 
     elif method == "variance" and variance_threshold and len(columns) > 0:
@@ -248,7 +244,9 @@ class ModelSpecsApp(tk.Tk):
         ttk.Label(filter_frame, text="Filter Method:").grid(row=0, column=0)
         self.method_var: tk.StringVar = tk.StringVar(value="value")
         method_dropdown = ttk.Combobox(
-            filter_frame, textvariable=self.method_var, values=list(FilterMethod.__args__)
+            filter_frame,
+            textvariable=self.method_var,
+            values=list(FilterMethod.__args__),
         )
         method_dropdown.grid(row=0, column=1)
 
@@ -256,7 +254,9 @@ class ModelSpecsApp(tk.Tk):
         ttk.Label(filter_frame, text="Column:").grid(row=0, column=2)
         self.column_var: tk.StringVar = tk.StringVar()
         column_dropdown = ttk.Combobox(
-            filter_frame, textvariable=self.column_var, values=list(self.df.columns)
+            filter_frame,
+            textvariable=self.column_var,
+            values=list(self.df.columns),
         )
         column_dropdown.grid(row=0, column=3)
 
@@ -267,7 +267,8 @@ class ModelSpecsApp(tk.Tk):
 
         # Filter Button
         ttk.Button(filter_frame, text="Apply Filter", command=self.apply_filter).grid(
-            row=0, column=6
+            row=0,
+            column=6,
         )
 
         # Treeview for displaying results
@@ -294,7 +295,10 @@ class ModelSpecsApp(tk.Tk):
             # Dynamic filtering based on method
             if method == "value":
                 filtered_data = filter_model_specs(
-                    method="value", columns=column, comparison="<=", value=float(value)
+                    method="value",
+                    columns=column,
+                    comparison="<=",
+                    value=float(value),
                 )
             elif method == "topn":
                 filtered_data = filter_model_specs(method="topn", columns=column, n=int(value))
@@ -327,7 +331,7 @@ class ModelSpecsApp(tk.Tk):
 
     def sort_column(self, col: str, reverse: bool):
         # Sort the treeview by the selected column
-        children = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
+        children: list[tuple[str, str]] = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
         try:
             children.sort(key=lambda t: float(t[0]), reverse=reverse)
         except ValueError:

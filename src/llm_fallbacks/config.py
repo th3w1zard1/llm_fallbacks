@@ -20,7 +20,7 @@ from llm_fallbacks.core import (
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing_extensions import Literal, TypedDict
+    from typing_extensions import Literal, TypedDict  # pyright: ignore[reportMissingModuleSource]
 
     RoutingStrategies = Literal[
         "simple-shuffle", "least-busy", "usage-based-routing", "latency-based-routing"
@@ -119,7 +119,9 @@ if TYPE_CHECKING:
         global_max_parallel_requests: int  # Global maximum parallel requests
         health_check_interval: int  # Health check interval
         infer_model_from_keys: bool  # Infer model from keys
-        key_management_settings: list[dict[str, Any]]  # Settings for key management system (e.g. AWS KMS, Azure Key Vault). Doc on key management: https://docs.litellm.ai/docs/secret
+        key_management_settings: list[
+            dict[str, Any]
+        ]  # Settings for key management system (e.g. AWS KMS, Azure Key Vault). Doc on key management: https://docs.litellm.ai/docs/secret  # noqa: E501
         key_management_system: str  # Key management system
         master_key: str  # Master key
         max_parallel_requests: int  # Maximum parallel requests
@@ -158,7 +160,7 @@ if TYPE_CHECKING:
         max_output_tokens: int  # max output tokens, if the provider specifies it. if not default to max_tokens
         max_pdf_size_mb: int  # maximum PDF size in MB
         max_query_tokens: int  # maximum number of tokens for queries
-        max_tokens: int  # LEGACY parameter. set to max_output_tokens if provider specifies it. IF not set to max_input_tokens, if provider specifies it.
+        max_tokens: int  # LEGACY parameter. set to max_output_tokens if provider specifies it. IF not set to max_input_tokens, if provider specifies it.  # noqa: E501
         max_video_length: int  # maximum length of video
         max_videos_per_prompt: int  # maximum number of videos per prompt
         metadata: dict[NotesKey, str]  # metadata associated with the model
@@ -282,8 +284,8 @@ class CustomProviderConfig(BaseProviderConfig):
             "base_url": self.base_url,
             "api_env_key_name": self.api_env_key_name,
             "api_key_required": self.api_key_required,
-            "model_specs": {k: v for k, v in self.model_specs.items()},
-            "free_models": {model_name: config for model_name, config in self.free_models.items()},
+            "model_specs": dict(self.model_specs.items()),
+            "free_models": dict(self.free_models.items()),
         }
 
     def _parse_api_key(self):

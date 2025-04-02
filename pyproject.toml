@@ -46,7 +46,7 @@ preview = true
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.isort]
-force-single-line = true
+#force-single-line = true
 force-sort-within-sections = false
 lines-after-imports = 2
 known-first-party = []

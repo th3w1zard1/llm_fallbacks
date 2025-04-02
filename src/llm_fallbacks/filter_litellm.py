@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
+
+from typing import Any
+from pathlib import Path
 
 if __name__ == "__main__":
     import os
@@ -32,74 +34,73 @@ from llm_fallbacks.core import (
 )
 
 # Chat Model Fallbacks
-CHAT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
-    get_chat_models()
-)
+CHAT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(get_chat_models())
 
 # Completion Model Fallbacks
-COMPLETION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_completion_models())
+COMPLETION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_completion_models()
 )
 
 # Embedding Model Fallbacks
-EMBEDDING_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_embedding_models())
+EMBEDDING_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_embedding_models()
 )
 
 # Image Generation Model Fallbacks
-IMAGE_GENERATION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_image_generation_models())
+IMAGE_GENERATION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_image_generation_models()
 )
 
 # Audio Transcription Model Fallbacks
-AUDIO_TRANSCRIPTION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_audio_transcription_models())
+AUDIO_TRANSCRIPTION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_audio_transcription_models()
 )
 
 # Audio Speech Model Fallbacks
-AUDIO_SPEECH_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_audio_speech_models())
+AUDIO_SPEECH_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_audio_speech_models()
 )
 
 # Moderation Model Fallbacks
-MODERATION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_moderation_models())
+MODERATION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_moderation_models()
 )
 
 # Rerank Model Fallbacks
-RERANK_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_rerank_models())
+RERANK_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_rerank_models()
 )
 
 # Vision Model Fallbacks
-VISION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_vision_models())
+VISION_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_vision_models()
 )
 
 # Function Calling Model Fallbacks
-FUNCTION_CALLING_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_function_calling_models())
+FUNCTION_CALLING_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_function_calling_models()
 )
 
 # Image Input Model Fallbacks
-IMAGE_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_image_input_models())
+IMAGE_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_image_input_models()
 )
 
 # Audio Input Model Fallbacks
-AUDIO_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_audio_input_models())
+AUDIO_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_audio_input_models()
 )
 
 # Audio Output Model Fallbacks
-AUDIO_OUTPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_audio_output_models())
+AUDIO_OUTPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_audio_output_models()
 )
 
 # PDF Input Model Fallbacks
-PDF_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = (
-    sort_models_by_cost_and_limits(get_pdf_input_models())
+PDF_INPUT_MODEL_PRIORITY_ORDER: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    get_pdf_input_models()
 )
+
 
 def filter_models(
     model_type: str = "chat",
@@ -189,7 +190,10 @@ def filter_models(
             continue
 
         # Skip if function calling support doesn't match
-        if supports_function_calling is not None and spec.get("supports_function_calling", False) != supports_function_calling:
+        if (
+            supports_function_calling is not None
+            and spec.get("supports_function_calling", False) != supports_function_calling
+        ):
             continue
 
         # Skip if provider doesn't match
@@ -199,11 +203,11 @@ def filter_models(
         filtered_models[name] = spec
 
     # Sort and return model names
-    sorted_models: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(filtered_models, free_only=free_only)
+    sorted_models: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+        filtered_models, free_only=free_only
+    )
     return [name for name, _ in sorted_models]
 
-import json
-from typing import Any
 
 if __name__ == "__main__":
 
