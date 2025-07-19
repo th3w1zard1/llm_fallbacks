@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import logging
 import os
 from typing import TYPE_CHECKING, Any
 
@@ -9,35 +10,73 @@ if TYPE_CHECKING:
     from llm_fallbacks.config import LiteLLMBaseModelSpec
 
 
+import threading
+
+_litellm_models_cache: dict[str, Any] | None = None
+_litellm_models_cache_lock = threading.Lock()
+
 def _get_litellm_models() -> dict[str, Any]:
-    import importlib.util
+    global _litellm_models_cache
 
-    if importlib.util.find_spec("litellm"):
-        import litellm  # pyright: ignore[reportMissingImports]
+    # Use a lock to ensure thread safety
+    if _litellm_models_cache is not None:
+        return _litellm_models_cache
 
-        return dict(litellm.model_cost)
+    with _litellm_models_cache_lock:
+        if _litellm_models_cache is not None:
+            return _litellm_models_cache
 
-    def _local_fallback():
-        import importlib.resources
+        import importlib.util
+        import socket
 
-        with importlib.resources.open_text(
-            "litellm", "model_prices_and_context_window_backup.json"
-        ) as f:
-            return json.load(f)
+        # Ensure the warning is only logged once
+        _logged_warning = getattr(_get_litellm_models, "_logged_warning", False)
 
-    if os.getenv("LITELLM_LOCAL_MODEL_COST_MAP", False) in {True, "True"}:
-        return _local_fallback()
+        if importlib.util.find_spec("litellm"):
+            import litellm  # pyright: ignore[reportMissingImports]
+            _litellm_models_cache = dict(litellm.model_cost)
+            return _litellm_models_cache
 
-    try:
-        conn = http.client.HTTPSConnection("raw.githubusercontent.com")
-        conn.request("GET", "/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json")
-        response: http.client.HTTPResponse = conn.getresponse()
+        def _local_fallback():
+            import importlib.resources
 
-        if response.status != 200:
-            raise Exception(f"Request failed with status: {response.status}: {response.reason}")
-        return json.loads(response.read())
-    except Exception:
-        return _local_fallback()
+            with importlib.resources.open_text(
+                "litellm", "model_prices_and_context_window_backup.json"
+            ) as f:
+                return json.load(f)
+
+        if os.getenv("LITELLM_LOCAL_MODEL_COST_MAP", False) in {True, "True"}:
+            _litellm_models_cache = _local_fallback()
+            return _litellm_models_cache
+
+        try:
+            if not _logged_warning:
+                logging.warning(
+                    "Attempting to fetch model prices from GitHub (raw.githubusercontent.com). "
+                    "This may hang if the network is slow or unavailable. Timeout is set to 5 seconds."
+                )
+                setattr(_get_litellm_models, "_logged_warning", True)
+            conn = http.client.HTTPSConnection("raw.githubusercontent.com", timeout=1)
+            conn.request("GET", "/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json")
+            response: http.client.HTTPResponse = conn.getresponse()
+            print(response.status, response.reason)
+        except (http.client.HTTPException, socket.timeout):
+            logging.warning(
+                "Failed to fetch model prices from GitHub (raw.githubusercontent.com). "
+                "Using local fallback."
+            )
+            _litellm_models_cache = _local_fallback()
+            return _litellm_models_cache
+        except Exception:
+            _litellm_models_cache = _local_fallback()
+            return _litellm_models_cache
+        else:
+            if response.status != 200:
+                logging.error(f"Request failed with status: {response.status}: {response.reason}")
+                _litellm_models_cache = _local_fallback()
+                return _litellm_models_cache
+            _litellm_models_cache = json.loads(response.read())
+            return _litellm_models_cache
 
 
 if "CACHED_LITELLM_MODELS" not in globals():

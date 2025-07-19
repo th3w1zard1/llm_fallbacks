@@ -301,9 +301,7 @@ class CustomProviderConfig(BaseProviderConfig):
             raise ValueError(f"API environment key name for {self.provider_name} is not set.")
         self.api_key = os.getenv(self.api_env_key_name)
         if (not self.api_key or not self.api_key.strip()) and self.api_key_required:
-            raise ValueError(
-                f"API key for '{self.provider_name}' is not set. Set '{self.api_env_key_name}' in your environment."
-            )
+            raise ValueError(f"API key for '{self.provider_name}' is not set. Set '{self.api_env_key_name}' in your environment.")
 
     @classmethod
     def _parse_standard_model_response(
@@ -358,7 +356,7 @@ class CustomProviderConfig(BaseProviderConfig):
         self,
         models: Dict[str, LiteLLMBaseModelSpec],
     ):
-        if self.parse_models_function is not None:
+        if self.parse_models_function is not None and self._requested_models is not None:
             parsed_requested_models: Dict[str, LiteLLMBaseModelSpec] = self.parse_models_function(
                 self.provider_name,
                 self._requested_models,
@@ -514,7 +512,7 @@ if "CUSTOM_PROVIDERS" not in globals():
         CustomProviderConfig(
             provider_name="openrouter",
             base_url="https://openrouter.ai/api/v1",
-            api_key_required=True,
+            api_key_required=False,
             parse_models_function=_parse_openrouter_models_response,
         ),
         CustomProviderConfig(
@@ -531,36 +529,35 @@ if "CUSTOM_PROVIDERS" not in globals():
         ),
     ]
 
-if "FREE_MODELS" not in globals():  # don't waste time and energy redefining these anytime config.py is imported.
-    all_configs: Dict[str, LiteLLMBaseModelSpec] = {
+all_configs: Dict[str, LiteLLMBaseModelSpec] = {
+    model_name: config
+    for provider in CUSTOM_PROVIDERS
+    for model_name, config in provider.model_specs.items()
+}
+all_configs.update(
+    {
         model_name: config
-        for provider in CUSTOM_PROVIDERS
-        for model_name, config in provider.model_specs.items()
+        for model_name, config in BaseProviderConfig.ALL_KNOWN_MODELS.items()
+        if model_name not in all_configs
     }
-    all_configs.update(
-        {
-            model_name: config
-            for model_name, config in BaseProviderConfig.ALL_KNOWN_MODELS.items()
-            if model_name not in all_configs
-        }
-    )
-    ALL_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(all_configs)
-    FREE_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
-        all_configs,
-        free_only=True,
-    )
-    ALL_EMBEDDING_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
-        {
-            k: v
-            for k, v in all_configs.items()
-            if v.get("mode") == "embedding"
-        },
-    )
-    FREE_EMBEDDING_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
-        {
-            k: v
-            for k, v in all_configs.items()
-            if v.get("mode") == "embedding"
-        },
-        free_only=True,
-    )
+)
+ALL_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(all_configs)
+FREE_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    all_configs,
+    free_only=True,
+)
+ALL_EMBEDDING_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    {
+        k: v
+        for k, v in all_configs.items()
+        if v.get("mode") == "embedding"
+    },
+)
+FREE_EMBEDDING_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    {
+        k: v
+        for k, v in all_configs.items()
+        if v.get("mode") == "embedding"
+    },
+    free_only=True,
+)
