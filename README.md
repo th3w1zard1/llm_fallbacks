@@ -213,9 +213,4 @@ For issues or questions:
 
 ## Contributing
 
-When modifying the system:
-
-1. Update this README with changes
-2. Test locally before pushing
-3. Ensure CI/CD pipeline passes
-4. Update deployment script if needed
+Contributions are welcome! Please feel free to submit a Pull Request.
