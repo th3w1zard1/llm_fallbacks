@@ -546,6 +546,21 @@ FREE_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_li
     all_configs,
     free_only=True,
 )
+ALL_CHAT_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    {
+        k: v
+        for k, v in all_configs.items()
+        if v.get("mode") == "chat"
+    },
+)
+FREE_CHAT_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
+    {
+        k: v
+        for k, v in all_configs.items()
+        if v.get("mode") == "chat"
+    },
+    free_only=True,
+)
 ALL_EMBEDDING_MODELS: list[tuple[str, LiteLLMBaseModelSpec]] = sort_models_by_cost_and_limits(
     {
         k: v

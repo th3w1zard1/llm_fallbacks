@@ -199,24 +199,27 @@ def to_litellm_config_yaml(
 
 
 if __name__ == "__main__":
-    print("Saving custom_providers.json")
-    Path("custom_providers.json").absolute().write_text(
+    custom_providers_path = Path("custom_providers.json").absolute()
+    print(f"Saving {custom_providers_path}")
+    custom_providers_path.write_text(
         json.dumps(
             [provider.to_dict() for provider in CUSTOM_PROVIDERS],
             indent=4,
             ensure_ascii=True,
         ),
     )
-    print("Saving all_models.json")
-    Path("all_models.json").absolute().write_text(
+    all_models_path = Path("all_models.json").absolute()
+    print(f"Saving {all_models_path}")
+    all_models_path.write_text(
         json.dumps(
             dict(ALL_MODELS),
             indent=4,
             ensure_ascii=True,
         ),
     )
-    print("Saving free_chat_models.json")
-    Path("free_chat_models.json").absolute().write_text(
+    free_chat_models_path = Path("free_chat_models.json").absolute()
+    print(f"Saving {free_chat_models_path}")
+    free_chat_models_path.write_text(
         json.dumps(
             dict(FREE_MODELS),
             indent=4,
@@ -228,8 +231,9 @@ if __name__ == "__main__":
     try:
         import yaml
 
-        print("Saving litellm_config_free.yaml")
-        Path("litellm_config_free.yaml").write_text(
+        litellm_config_free_path = Path("litellm_config_free.yaml").absolute()
+        print(f"Saving {litellm_config_free_path}")
+        litellm_config_free_path.write_text(
             yaml.dump(
                 to_litellm_config_yaml(CUSTOM_PROVIDERS, free_only=True),
                 sort_keys=False,
@@ -238,8 +242,9 @@ if __name__ == "__main__":
             errors="replace",
             encoding="utf-8",
         )
-        print("Saving litellm_config.yaml")
-        Path("litellm_config.yaml").write_text(
+        litellm_config_path = Path("litellm_config.yaml").absolute()
+        print(f"Saving {litellm_config_path}")
+        litellm_config_path.write_text(
             yaml.dump(
                 to_litellm_config_yaml(CUSTOM_PROVIDERS, free_only=False),
                 sort_keys=False,

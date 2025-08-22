@@ -1,110 +1,221 @@
-# LLM Fallbacks
+# LLM Fallbacks CI/CD System
 
-[![PyPI version](https://badge.fury.io/py/llm-fallbacks.svg)](https://badge.fury.io/py/llm-fallbacks)
-[![Python Versions](https://img.shields.io/pypi/pyversions/llm-fallbacks.svg)](https://pypi.org/project/llm-fallbacks/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+This directory contains the CI/CD infrastructure for automatically updating the `free_chat_models.json` file daily at 5 AM using your `generate_configs.py` script.
 
-A Python library for managing fallbacks for LLM API calls using the [LiteLLM](https://github.com/BerriAI/litellm) library.
+## Overview
 
-## Features
+The system replaces the hardcoded configmaps in your Docker Compose file with a dynamic configuration system that:
 
-- 🔄 **Automatic Fallbacks**: Gracefully handle API failures by providing alternative models
-- 📊 **Model Filtering**: Filter models based on various criteria like cost, context length, and capabilities
-- 💰 **Cost Optimization**: Sort models by cost to optimize your API usage
-- 🧠 **Model Discovery**: Discover available models and their capabilities
-- 🛠️ **GUI Tool**: Includes a GUI tool for exploring and filtering available models
+1. **Automatically generates** `free_chat_models.json` daily at 5 AM
+2. **Runs entirely in containers** (no host cron required)
+3. **Integrates with your existing** Docker Compose setup
+4. **Provides CI/CD pipeline** for automated testing and deployment
 
-## Installation
+## Architecture
 
-```bash
-pip install llm-fallbacks
+### Services
+
+- **`model-scheduler`**: Alpine-based cron service that runs daily at 5 AM
+- **`model-updater`**: Python service that executes `generate_configs.py`
+- **`litellm`**: Your existing LiteLLM service (now uses dynamic config)
+
+### Data Flow
+
 ```
+Daily at 5 AM:
+model-scheduler → triggers → model-updater → generates → free_chat_models.json
+                                                      ↓
+                                              litellm service uses updated config
+```
+
+## Files
+
+### Docker Images
+- `Dockerfile.model-updater`: Python service for running generate_configs.py
+- `Dockerfile.scheduler`: Alpine-based cron scheduler
+- `requirements.txt`: Python dependencies for the model updater
+
+### Scripts
+- `scheduler.sh`: Cron job script that triggers model updates
+- `deploy-llm-fallbacks.sh`: Deployment script for the entire system
+
+### Configuration
+- `docker-compose.llm.yml`: Updated Docker Compose with new services
+- `.github/workflows/llm-fallbacks-ci.yml`: GitHub Actions CI/CD pipeline
 
 ## Quick Start
 
-```python
-from llm_fallbacks import get_chat_models, filter_models, get_fallback_list
-
-# Get all available chat models
-chat_models = get_chat_models()
-print(f"Found {len(chat_models)} chat models")
-
-# Filter models based on criteria
-vision_models = filter_models(
-    model_type="chat",
-    supports_vision=True,
-    max_cost_per_token=0.001
-)
-print(f"Found {len(vision_models)} vision-capable models under 0.001 per token")
-
-# Get a fallback list for a specific model type
-fallbacks = get_fallback_list("chat")
-print(f"Recommended fallback order: {fallbacks}")
-```
-
-## GUI Tool
-
-LLM Fallbacks includes a GUI tool for exploring and filtering available models:
+### 1. Deploy the System
 
 ```bash
-# Run the GUI tool
-python -m llm_fallbacks
+# From the project root
+./scripts/deploy-llm-fallbacks.sh deploy
 ```
 
-## API Reference
+### 2. Check Status
 
-### Core Functions
-
-- `get_chat_models()`: Get all available chat models
-- `get_completion_models()`: Get all available completion models
-- `get_embedding_models()`: Get all available embedding models
-- `get_image_generation_models()`: Get all available image generation models
-- `get_audio_transcription_models()`: Get all available audio transcription models
-- `get_audio_speech_models()`: Get all available audio speech models
-- `get_moderation_models()`: Get all available moderation models
-- `get_rerank_models()`: Get all available rerank models
-- `get_vision_models()`: Get all available vision models
-- `get_function_calling_models()`: Get all available function calling models
-- `get_parallel_function_calling_models()`: Get all available parallel function calling models
-- `get_image_input_models()`: Get all available image input models
-- `get_audio_input_models()`: Get all available audio input models
-- `get_audio_output_models()`: Get all available audio output models
-- `get_pdf_input_models()`: Get all available PDF input models
-- `get_models()`: Get all available models
-- `get_fallback_list(model_type)`: Get a fallback list for a specific model type
-- `filter_models(model_type, **kwargs)`: Filter models based on various criteria
-
-### Filtering Models
-
-The `filter_models` function allows you to filter models based on various criteria:
-
-```python
-from llm_fallbacks import filter_models
-
-# Get free chat models that support vision
-free_vision_models = filter_models(
-    model_type="chat",
-    free_only=True,
-    supports_vision=True
-)
-
-# Get models with a minimum context length
-long_context_models = filter_models(
-    model_type="chat",
-    min_context_length=16000
-)
-
-# Get models from a specific provider
-openai_models = filter_models(
-    model_type="chat",
-    provider="openai"
-)
+```bash
+./scripts/deploy-llm-fallbacks.sh status
 ```
+
+### 3. Force Model Update
+
+```bash
+./scripts/deploy-llm-fallbacks.sh update
+```
+
+### 4. View Logs
+
+```bash
+./scripts/deploy-llm-fallbacks.sh logs
+```
+
+## Manual Deployment
+
+If you prefer to deploy manually:
+
+```bash
+# Build images
+cd src/llm_fallbacks
+docker build -f Dockerfile.model-updater -t llm-fallbacks:model-updater .
+docker build -f Dockerfile.scheduler -t llm-fallbacks:scheduler .
+
+# Deploy services
+cd ../../compose
+docker-compose -f docker-compose.llm.yml up -d
+```
+
+## Configuration
+
+### Environment Variables
+
+The system requires these environment variables:
+
+- `OPENROUTER_API_KEY`: For fetching model information
+- `POSTGRES_PASSWORD`: For database connections
+- `TZ`: Timezone (defaults to UTC)
+
+### Volume Mounts
+
+- `/var/run/docker.sock`: For scheduler to control Docker containers
+- `${CONFIG_PATH}/litellm`: For storing generated configuration files
+- `scheduler-logs`: For storing scheduler logs
+
+## Monitoring
+
+### Health Checks
+
+- **model-scheduler**: Runs continuously with cron daemon
+- **model-updater**: Runs on-demand, completes and stops
+- **litellm**: Standard health check endpoint
+
+### Logs
+
+```bash
+# View all logs
+docker-compose -f compose/docker-compose.llm.yml logs
+
+# View specific service logs
+docker-compose -f compose/docker-compose.llm.yml logs model-scheduler
+docker-compose -f compose/docker-compose.llm.yml logs model-updater
+```
+
+### Troubleshooting
+
+1. **Check if scheduler is running**:
+   ```bash
+   docker ps | grep model-scheduler
+   ```
+
+2. **Check cron logs**:
+   ```bash
+   docker exec model-scheduler cat /var/log/model-updater.log
+   ```
+
+3. **Force manual update**:
+   ```bash
+   ./scripts/deploy-llm-fallbacks.sh update
+   ```
+
+## CI/CD Pipeline
+
+The GitHub Actions workflow provides:
+
+- **Automated testing** on multiple Python versions
+- **Docker image building** and testing
+- **Daily model updates** via scheduled runs
+- **Manual trigger** for forced updates
+- **Automatic commits** of updated model configurations
+
+### Workflow Triggers
+
+- **Push/PR**: Runs tests and builds on code changes
+- **Schedule**: Daily at 6 AM UTC (tests model updater)
+- **Manual**: Workflow dispatch for forced updates
+
+## Security Considerations
+
+- **Docker socket access**: The scheduler needs access to Docker socket to control containers
+- **API keys**: Store sensitive keys as environment variables or secrets
+- **Non-root containers**: All services run as non-root users
+- **Read-only volumes**: Where possible, volumes are mounted read-only
+
+## Customization
+
+### Change Update Schedule
+
+Edit `Dockerfile.scheduler`:
+```dockerfile
+# Change from "0 5 * * *" to your preferred schedule
+RUN echo "0 5 * * * /app/scheduler.sh" > /var/spool/cron/crontabs/root
+```
+
+### Add More Providers
+
+Modify `generate_configs.py` to include additional model providers in the `CUSTOM_PROVIDERS` list.
+
+### Custom Health Checks
+
+Add health check endpoints to your services and update the Docker Compose file accordingly.
+
+## Backup and Recovery
+
+### Backup Configuration
+
+```bash
+# Backup current configuration
+cp configs/litellm/free_chat_models.json configs/litellm/free_chat_models.json.backup
+```
+
+### Restore Configuration
+
+```bash
+# Restore from backup
+cp configs/litellm/free_chat_models.json.backup configs/litellm/free_chat_models.json
+docker-compose -f compose/docker-compose.llm.yml restart litellm
+```
+
+## Performance Considerations
+
+- **Model updater**: Runs on-demand, minimal resource usage
+- **Scheduler**: Lightweight Alpine container, minimal overhead
+- **Caching**: Uses Docker volumes for persistent storage
+- **Parallel execution**: Services can run independently
+
+## Support
+
+For issues or questions:
+
+1. Check the logs: `./scripts/deploy-llm-fallbacks.sh logs`
+2. Verify service status: `./scripts/deploy-llm-fallbacks.sh status`
+3. Test manual update: `./scripts/deploy-llm-fallbacks.sh update`
+4. Review this README for troubleshooting steps
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+When modifying the system:
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+1. Update this README with changes
+2. Test locally before pushing
+3. Ensure CI/CD pipeline passes
+4. Update deployment script if needed
