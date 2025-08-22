@@ -199,7 +199,11 @@ def to_litellm_config_yaml(
 
 
 if __name__ == "__main__":
-    custom_providers_path = Path("custom_providers.json").absolute()
+    # Create configs directory if it doesn't exist
+    configs_dir = Path("configs")
+    configs_dir.mkdir(exist_ok=True)
+    
+    custom_providers_path = configs_dir / "custom_providers.json"
     print(f"Saving {custom_providers_path}")
     custom_providers_path.write_text(
         json.dumps(
@@ -208,7 +212,7 @@ if __name__ == "__main__":
             ensure_ascii=True,
         ),
     )
-    all_models_path = Path("all_models.json").absolute()
+    all_models_path = configs_dir / "all_models.json"
     print(f"Saving {all_models_path}")
     all_models_path.write_text(
         json.dumps(
@@ -217,7 +221,7 @@ if __name__ == "__main__":
             ensure_ascii=True,
         ),
     )
-    free_chat_models_path = Path("free_chat_models.json").absolute()
+    free_chat_models_path = configs_dir / "free_chat_models.json"
     print(f"Saving {free_chat_models_path}")
     free_chat_models_path.write_text(
         json.dumps(
@@ -231,7 +235,7 @@ if __name__ == "__main__":
     try:
         import yaml
 
-        litellm_config_free_path = Path("litellm_config_free.yaml").absolute()
+        litellm_config_free_path = configs_dir / "litellm_config_free.yaml"
         print(f"Saving {litellm_config_free_path}")
         litellm_config_free_path.write_text(
             yaml.dump(
@@ -242,7 +246,7 @@ if __name__ == "__main__":
             errors="replace",
             encoding="utf-8",
         )
-        litellm_config_path = Path("litellm_config.yaml").absolute()
+        litellm_config_path = configs_dir / "litellm_config.yaml"
         print(f"Saving {litellm_config_path}")
         litellm_config_path.write_text(
             yaml.dump(

@@ -1,216 +1,278 @@
-# LLM Fallbacks CI/CD System
+# LLM Fallbacks
 
-This directory contains the CI/CD infrastructure for automatically updating the `free_chat_models.json` file daily at 5 AM using your `generate_configs.py` script.
+[![Python Package](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/python-package.yml/badge.svg)](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/python-package.yml)
+[![Python Publish](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/python-publish.yml/badge.svg)](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/python-publish.yml)
+[![Daily Config Update](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/daily-config-update.yml/badge.svg)](https://github.com/bodencrouch/llm-fallbacks/actions/workflows/daily-config-update.yml)
 
-## Overview
+A comprehensive Python library for managing fallback mechanisms for Large Language Model (LLM) API calls using the [LiteLLM](https://github.com/BerriAI/liteLLM) library. This library helps you handle API failures gracefully by providing alternative models to try when a primary model fails.
 
-The system replaces the hardcoded configmaps in your Docker Compose file with a dynamic configuration system that:
+## Features
 
-1. **Automatically generates** `free_chat_models.json` daily at 5 AM
-2. **Runs entirely in containers** (no host cron required)
-3. **Integrates with your existing** Docker Compose setup
-4. **Provides CI/CD pipeline** for automated testing and deployment
+- **Comprehensive Model Management**: Access to thousands of LLM models across multiple providers
+- **Intelligent Fallback Strategies**: Automatic fallback configuration based on model capabilities and cost
+- **Cost Optimization**: Built-in cost calculation and model sorting by price and performance
+- **Multi-Modal Support**: Support for chat, completion, embedding, vision, audio, and more model types
+- **Provider Management**: Custom provider configuration and API key management
+- **LiteLLM Integration**: Seamless integration with LiteLLM proxy for production deployments
+- **GUI Interface**: Interactive model filtering and selection interface
+- **Configuration Export**: Generate ready-to-use LiteLLM YAML configurations
 
-## Architecture
+## Installation
 
-### Services
-
-- **`model-scheduler`**: Alpine-based cron service that runs daily at 5 AM
-- **`model-updater`**: Python service that executes `generate_configs.py`
-- **`litellm`**: Your existing LiteLLM service (now uses dynamic config)
-
-### Data Flow
-
-```
-Daily at 5 AM:
-model-scheduler → triggers → model-updater → generates → free_chat_models.json
-                                                      ↓
-                                              litellm service uses updated config
+```bash
+pip install llm-fallbacks
 ```
 
-## Files
+### Development Installation
 
-### Docker Images
-- `Dockerfile.model-updater`: Python service for running generate_configs.py
-- `Dockerfile.scheduler`: Alpine-based cron scheduler
-- `requirements.txt`: Python dependencies for the model updater
-
-### Scripts
-- `scheduler.sh`: Cron job script that triggers model updates
-- `deploy-llm-fallbacks.sh`: Deployment script for the entire system
-
-### Configuration
-- `docker-compose.llm.yml`: Updated Docker Compose with new services
-- `.github/workflows/llm-fallbacks-ci.yml`: GitHub Actions CI/CD pipeline
+```bash
+git clone https://github.com/bodencrouch/llm-fallbacks.git
+cd llm-fallbacks
+pip install -e .
+```
 
 ## Quick Start
 
-### 1. Deploy the System
+### Download the repo
 
 ```bash
-# From the project root
-./scripts/deploy-llm-fallbacks.sh deploy
+git clone https://github.com/th3w1zard1/llm_fallbacks.git
+cd llm_fallbacks
+uv sync
+uv run src/tests/test_core.py
 ```
 
-### 2. Check Status
+### Basic Usage
+
+```python
+from llm_fallbacks import get_chat_models, get_fallback_list
+
+# Get all available chat models
+chat_models = get_chat_models()
+
+# Get fallback models for a specific model
+fallbacks = get_fallback_list("gpt-4", model_type="chat")
+print(f"Fallback models for GPT-4: {fallbacks}")
+```
+
+### Model Filtering
+
+```python
+from llm_fallbacks import filter_models
+
+# Get free chat models only
+free_models = filter_models(
+    model_type="chat",
+    free_only=True
+)
+
+# Get models with specific capabilities
+vision_models = filter_models(
+    model_type="chat",
+    vision=True
+)
+```
+
+### Cost Analysis Examples
+
+Sort the models by cost:
+
+```python
+from llm_fallbacks import get_litellm_models, sort_models_by_cost_and_limits
+
+# Get all models with cost information
+models = get_litellm_models()
+
+# Sort models by cost (cheapest first)
+sorted_models = sort_models_by_cost_and_limits(models, free_only=True)
+print(repr(sorted_models))
+```
+
+Calculate cost for a specific model:
+
+```python
+from llm_fallbacks import get_litellm_models, calculate_cost_per_token
+
+model_spec = get_litellm_models()["gpt-5"]
+cost_per_token = calculate_cost_per_token(model_spec)
+print(f"Cost per token: ${cost_per_token:.6f}")
+```
+
+### Configuration Generation
+
+```python
+from llm_fallbacks.generate_configs import to_litellm_config_yaml
+
+# Generate LiteLLM configuration
+config = to_litellm_config_yaml(
+    providers=[],  # Your custom providers
+    free_only=True
+)
+
+# Save to YAML file
+import yaml
+with open("litellm_config.yaml", "w") as f:
+    yaml.dump(config, f)
+```
+
+or run `generate_configs.py`:
+```bash
+uv run src/generate_configs.py
+```
+
+## Core Components
+
+### 1. Model Management (`core.py`)
+
+- **`get_litellm_models()`**: Retrieve all available LiteLLM models with specifications
+- **`get_chat_models()`**: Get models supporting chat completion
+- **`get_completion_models()`**: Get models supporting text completion
+- **`get_embedding_models()`**: Get models supporting text embeddings
+- **`get_vision_models()`**: Get models supporting vision tasks
+- **`get_audio_models()`**: Get models supporting audio processing
+
+### 2. Configuration (`config.py`)
+
+- **Model Specifications**: Comprehensive model metadata including capabilities, costs, and limits
+- **Provider Configuration**: Custom provider setup for private or specialized models
+- **Fallback Strategies**: Intelligent fallback configuration based on model compatibility
+
+### 3. Configuration Generation (`generate_configs.py`)
+
+- **LiteLLM YAML Export**: Generate production-ready LiteLLM proxy configurations
+- **Fallback Mapping**: Automatic fallback model assignment based on capabilities
+- **Cost Optimization**: Prioritize models by cost and performance
+
+### 4. Interactive Interface (`__main__.py`)
+
+- **GUI Application**: Tkinter-based interface for model exploration (experimental)
+- **Advanced Filtering**: Multiple filtering methods (regex, quantile, outlier detection)
+- **Data Export**: Export filtered results to various formats
+
+## Configuration Files
+
+The library generates several configuration files that are stored in the `configs/` directory:
+
+- **`litellm_config.yaml`**: Full LiteLLM configuration with all models
+- **`litellm_config_free.yaml`**: Configuration with free models only
+- **`all_models.json`**: Complete model database in JSON format
+- **`free_chat_models.json`**: Free chat models only
+- **`custom_providers.json`**: Custom provider configurations
+
+These files are automatically updated daily at 12:00 AM UTC via GitHub Actions to ensure you always have the latest model information and configurations.
+
+## Advanced Features
+
+### Custom Provider Configuration
+
+```python
+from llm_fallbacks.config import CustomProviderConfig
+
+custom_provider = CustomProviderConfig(
+    name="my-custom-provider",
+    base_url="https://api.myprovider.com",
+    api_key="your-api-key",
+    models=["custom-model-1", "custom-model-2"]
+)
+```
+
+### Fallback Strategy Customization
+
+```python
+from llm_fallbacks.config import RouterSettings
+
+router_settings = RouterSettings(
+    allowed_fails=3,
+    cooldown_time=30,
+    fallbacks=[{"gpt-4": ["gpt-3.5-turbo", "claude-3-sonnet"]}]
+)
+```
+
+## CLI Usage
+
+### Interactive GUI
 
 ```bash
-./scripts/deploy-llm-fallbacks.sh status
+python -m llm_fallbacks
 ```
 
-### 3. Force Model Update
+### Generate Configurations
 
 ```bash
-./scripts/deploy-llm-fallbacks.sh update
+python -m llm_fallbacks.generate_configs
 ```
 
-### 4. View Logs
+### System Testing
 
 ```bash
-./scripts/deploy-llm-fallbacks.sh logs
+python test_system.py
 ```
 
-## Manual Deployment
+## Development
 
-If you prefer to deploy manually:
+### Prerequisites
+
+- Python 3.12+
+- Poetry or pip for dependency management
+
+### Setup Development Environment
 
 ```bash
-# Build images
-cd src/llm_fallbacks
-docker build -f Dockerfile.model-updater -t llm-fallbacks:model-updater .
-docker build -f Dockerfile.scheduler -t llm-fallbacks:scheduler .
+# Install development dependencies
+pip install -r requirements-dev.txt
 
-# Deploy services
-cd ../../compose
-docker-compose -f docker-compose.llm.yml up -d
+# Install pre-commit hooks
+pre-commit install
+
+# Run tests
+pytest tests/
 ```
 
-## Configuration
+## CI/CD
 
-### Environment Variables
+The project includes automated workflows:
 
-The system requires these environment variables:
+- **Python Package**: Runs on every push/PR with linting, testing, and building
+- **Python Publish**: Automatically publishes to PyPI on releases
+- **Daily Config Update**: Updates model configurations daily at 12:00 AM UTC
 
-- `OPENROUTER_API_KEY`: For fetching model information
-- `POSTGRES_PASSWORD`: For database connections
-- `TZ`: Timezone (defaults to UTC)
+### Automated Configuration Updates
 
-### Volume Mounts
+The library automatically maintains up-to-date model configurations through:
 
-- `/var/run/docker.sock`: For scheduler to control Docker containers
-- `${CONFIG_PATH}/litellm`: For storing generated configuration files
-- `scheduler-logs`: For storing scheduler logs
+1. **Daily Updates**: GitHub Actions workflow runs every day at 12:00 AM UTC
+2. **Model Database**: Fetches latest model information from LiteLLM
+3. **Fallback Strategies**: Generates intelligent fallback configurations
+4. **Version Control**: All changes are automatically committed and tracked
 
-## Monitoring
-
-### Health Checks
-
-- **model-scheduler**: Runs continuously with cron daemon
-- **model-updater**: Runs on-demand, completes and stops
-- **litellm**: Standard health check endpoint
-
-### Logs
-
-```bash
-# View all logs
-docker-compose -f compose/docker-compose.llm.yml logs
-
-# View specific service logs
-docker-compose -f compose/docker-compose.llm.yml logs model-scheduler
-docker-compose -f compose/docker-compose.llm.yml logs model-updater
-```
-
-### Troubleshooting
-
-1. **Check if scheduler is running**:
-   ```bash
-   docker ps | grep model-scheduler
-   ```
-
-2. **Check cron logs**:
-   ```bash
-   docker exec model-scheduler cat /var/log/model-updater.log
-   ```
-
-3. **Force manual update**:
-   ```bash
-   ./scripts/deploy-llm-fallbacks.sh update
-   ```
-
-## CI/CD Pipeline
-
-The GitHub Actions workflow provides:
-
-- **Automated testing** on multiple Python versions
-- **Docker image building** and testing
-- **Daily model updates** via scheduled runs
-- **Manual trigger** for forced updates
-- **Automatic commits** of updated model configurations
-
-### Workflow Triggers
-
-- **Push/PR**: Runs tests and builds on code changes
-- **Schedule**: Daily at 6 AM UTC (tests model updater)
-- **Manual**: Workflow dispatch for forced updates
-
-## Security Considerations
-
-- **Docker socket access**: The scheduler needs access to Docker socket to control containers
-- **API keys**: Store sensitive keys as environment variables or secrets
-- **Non-root containers**: All services run as non-root users
-- **Read-only volumes**: Where possible, volumes are mounted read-only
-
-## Customization
-
-### Change Update Schedule
-
-Edit `Dockerfile.scheduler`:
-```dockerfile
-# Change from "0 5 * * *" to your preferred schedule
-RUN echo "0 5 * * * /app/scheduler.sh" > /var/spool/cron/crontabs/root
-```
-
-### Add More Providers
-
-Modify `generate_configs.py` to include additional model providers in the `CUSTOM_PROVIDERS` list.
-
-### Custom Health Checks
-
-Add health check endpoints to your services and update the Docker Compose file accordingly.
-
-## Backup and Recovery
-
-### Backup Configuration
-
-```bash
-# Backup current configuration
-cp configs/litellm/free_chat_models.json configs/litellm/free_chat_models.json.backup
-```
-
-### Restore Configuration
-
-```bash
-# Restore from backup
-cp configs/litellm/free_chat_models.json.backup configs/litellm/free_chat_models.json
-docker-compose -f compose/docker-compose.llm.yml restart litellm
-```
-
-## Performance Considerations
-
-- **Model updater**: Runs on-demand, minimal resource usage
-- **Scheduler**: Lightweight Alpine container, minimal overhead
-- **Caching**: Uses Docker volumes for persistent storage
-- **Parallel execution**: Services can run independently
-
-## Support
-
-For issues or questions:
-
-1. Check the logs: `./scripts/deploy-llm-fallbacks.sh logs`
-2. Verify service status: `./scripts/deploy-llm-fallbacks.sh status`
-3. Test manual update: `./scripts/deploy-llm-fallbacks.sh update`
-4. Review this README for troubleshooting steps
+This ensures your applications always have access to the latest models, pricing, and capabilities without manual intervention.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the Business Source License 1.1 (BSL 1.1) - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support and questions:
+
+- Open an issue on GitHub
+- Check the [documentation](https://github.com/bodencrouch/llm-fallbacks)
+- Contact: boden.crouch@gmail.com
+
+## Acknowledgments
+
+- Built on top of [LiteLLM](https://github.com/BerriAI/liteLLM)
+- Inspired by the need for robust LLM fallback strategies
+- Community contributions and feedback
+
+---
+
+**Note**: This library is designed to work with the LiteLLM ecosystem and provides fallback mechanisms for production LLM applications. Always test fallback configurations in your specific environment before deploying to production.

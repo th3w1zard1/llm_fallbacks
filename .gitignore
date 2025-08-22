@@ -160,8 +160,3 @@ cython_debug/
 #.idea/
 
 .history
-all_models.json
-custom_providers.json
-free_chat_models.json
-litellm_config_free.yaml
-litellm_config.yaml

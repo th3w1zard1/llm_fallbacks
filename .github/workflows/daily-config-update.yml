@@ -1,0 +1,44 @@
+name: Daily Config Update
+
+on:
+  schedule:
+    # Run daily at 12:00 AM UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-configs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyyaml
+        
+    - name: Generate configuration files
+      run: |
+        cd src/llm_fallbacks
+        python generate_configs.py
+        
+    - name: Move config files to configs directory
+      run: |
+        mkdir -p configs
+        mv *.json configs/ 2>/dev/null || true
+        mv *.yaml configs/ 2>/dev/null || true
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add configs/
+        git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Daily config update - $(date -u +'%Y-%m-%d %H:%M UTC')" && git push)

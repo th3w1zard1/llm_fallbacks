@@ -26,6 +26,7 @@ from llm_fallbacks.core import (
     get_rerank_models,
     get_vision_models,
     sort_models_by_cost_and_limits,
+    calculate_cost_per_token,
 )
 from llm_fallbacks.filter_litellm import filter_models
 
@@ -52,5 +53,6 @@ __all__ = [
     "get_rerank_models",
     "get_vision_models",
     "sort_models_by_cost_and_limits",
+    "calculate_cost_per_token",
     "filter_models",
 ]

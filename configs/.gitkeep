@@ -1,0 +1,2 @@
+# This file ensures the configs directory is tracked in git
+# The directory will store exported configuration files from generate_configs.py
